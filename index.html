@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winter Trip 2027</title>
+    
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入字體：Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- 載入 Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 設置 App 專屬圖示 -->
+    <link rel="apple-touch-icon" href="image/app-icon.png">
+    <link rel="icon" href="image/app-icon.png" sizes="192x192">
+    <meta name="apple-mobile-web-app-title" content="Winter Trip 2027">
+    
+    <style>
+        :root {
+            /* --- 顏色設定 (冬天藍色系) --- */
+            --primary-color: #1e3a8a;     /* 深雪夜藍 主題色 (blue-900) */
+            --accent-color: #e0f2fe;      /* 淺冰雪藍 (亮點區底色) */
+            --light-blue: #38bdf8;        /* 亮天藍 (圖示圓圈) */
+            --bg-color: #f8fafc;          /* 極淺雪白底色 */
+            --card-bg: #FFFFFF;
+            --text-main: #0f172a;         /* 深藏青色文字 */
+            --text-sub: #475569;          /* 淺灰藍色文字 */
+            --line-color: #7dd3fc;        /* 時間軸線條 (冰藍色) */
+
+            /* --- 版面與字體大小設定 --- */
+            --timeline-icon-size: 38px;
+            --timeline-icon-font-size: 16px;
+            --title-font-size: 20px;
+            --note-font-size: 17px;
+            --meta-font-size: 14px;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .timeline-line {
+            position: absolute;
+            left: calc(var(--timeline-icon-size) / 2);
+            top: 40px;
+            bottom: -20px;
+            width: 3px;
+            background-color: var(--line-color);
+            z-index: 0;
+            transform: translateX(-50%);
+            opacity: 0.5;
+        }
+        .last-item .timeline-line { display: none; }
+
+        .tab-active {
+            background-color: white;
+            color: var(--primary-color);
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .tab-inactive {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(0,0,0,0.05);
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+        .nav-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="shadow-md z-20 flex-none px-6 py-4 flex justify-between items-center" style="background-color: var(--primary-color);">
+        <div>
+            <h1 class="text-xl font-bold tracking-widest text-white">JAPAN 2027</h1>
+            <p class="text-xs mt-1 text-white opacity-90">銀山藏王草津・雪國名湯五日旅</p>
+        </div>
+        <div class="text-right">
+             <span id="header-date" class="text-sm font-medium text-white">JAN 13 - 17</span>
+        </div>
+    </header>
+
+    <nav class="z-10 flex-none py-3 overflow-x-auto no-scrollbar px-4" style="background-color: var(--primary-color); border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="flex space-x-3 min-w-max" id="tab-container">
+            <!-- Tabs 將由 JavaScript 生成 -->
+        </div>
+    </nav>
+
+    <main class="flex-1 flex overflow-hidden relative">
+        <!-- 行程列表 (左側/手機全寬) -->
+        <div class="w-full md:w-1/2 lg:w-5/12 overflow-y-auto no-scrollbar p-4 pb-24" id="itinerary-container">
+            <!-- 行程內容由 JS 渲染 -->
+        </div>
+
+        <!-- 亮點 & 筆記 (右側/僅桌面顯示) -->
+        <div class="hidden md:flex md:w-1/2 lg:w-7/12 bg-white border-l border-gray-100 flex-col relative h-full">
+            <div id="hero-color-area" class="h-1/3 w-full flex-none p-8 flex flex-col justify-end transition-colors duration-500 rounded-bl-xl bg-[var(--accent-color)]" style="background-color: var(--accent-color);">
+                <h2 id="hero-title" class="text-3xl font-bold mb-2 text-[var(--text-main)]">準備出發</h2>
+                <p id="hero-desc" class="text-sm leading-relaxed opacity-80 text-[var(--text-sub)]">漫步在浪漫的雪國溫泉鄉，享受頂級的三大名湯與樹冰絕景。</p>
+            </div>
+            <div class="h-2/3 p-8 overflow-y-auto bg-white flex-1">
+                <h3 class="text-lg font-bold mb-4 border-b pb-2 border-gray-200" style="color: var(--text-main);">本日亮點 & 導遊筆記</h3>
+                <div id="guide-notes" class="prose text-sm space-y-4 leading-7" style="color: var(--text-sub);">
+                    <!-- 筆記內容由 JS 渲染 -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // === 資料庫 ===
+        const itineraryData = [
+            {
+                day: "Day 1",
+                date: "2027-01-13",
+                title: "紅眼啟程・大正浪漫",
+                summary: "搭乘新幹線直奔山形，走進銀山溫泉的大正浪漫雪景，入住百年能登屋。",
+                guideNotes: `<ul>
+                    <li><strong>銀山溫泉 起源：</strong> 位於山形縣尾花澤市，早在 500 年前江戶時代初期，這裡因開採「延澤銀山」而繁榮，故得名「銀山」。後來銀礦枯竭，轉型為溫泉療養地。</li>
+                    <li><strong>銀山溫泉 景點：</strong> 這裡最大的特色是沿著銀山川兩岸林立的「大正至昭和初期」的多層木造溫泉旅館。傍晚煤氣燈點亮時，搭配漫天飛雪，宛如走進《神隱少女》的夢幻場景。盡頭有落差22公尺的「白銀瀑布」。</li>
+                    <li><strong>推薦美食 - はいからさん通り：</strong> 必吃熱騰騰的「咖哩麵包」，外皮酥脆內餡濃郁，是雪中散步的最佳點心。</li>
+                    <li><strong>推薦美食 - 野川豆腐店：</strong> 百年老店的手工豆腐，口感極度綿密，推薦站在店門口吃一份現做的立食湯豆腐。</li>
+                </ul>`,
+                activities: [
+                    { 
+                        time: "前日20:00", icon: "fa-car", title: "台中出發", location: "台中", 
+                        content: [
+                            { text: "已預約機場接送，前往桃園機場。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "00:10", icon: "fa-plane-departure", title: "桃園飛羽田", location: "桃園國際機場", 
+                        content: [
+                            { text: "搭乘紅眼班機，請在飛機上盡量休息儲備體力。<br/>預計 04:25 抵達東京國際機場(羽田機場第三航廈)。", images: [] },
+                            { text: "過海關領行李後，在機場找尋早餐填飽肚子。", images: [] }
+                        ],
+                        links: [{ url: "https://www.taoyuan-airport.com/", title: "桃園機場" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "06:45", icon: "fa-ticket", title: "JR PASS 兌換", location: "羽田機場", 
+                        content: [
+                            { text: "於羽田機場的 JR 東日本服務中心兌換實體 JR PASS，並劃位後續新幹線車票。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "07:30-09:30", icon: "fa-torii-gate", title: "上野寄放行李與淺草散策", location: "上野與淺草寺", 
+                        content: [
+                            { text: "搭車至上野車站，將大型行李寄放於車站置物櫃。<br/>趁著新幹線發車前的空檔，搭乘地鐵前往淺草寺參拜，感受清晨寧靜的雷門與仲見世通。", images: ["https://images.unsplash.com/photo-1542931287-023b922fa89b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "09:57-13:16", icon: "fa-train-tram", title: "【山形新幹線】前往銀山", location: "山形新幹線 翼 133號 (上野 -> 大石田)", 
+                        content: [
+                            { text: "回到上野車站，搭乘山形新幹線「つばさ (Tsubasa) 133號」前往大石田車站。沿途欣賞窗外景色由都市逐漸轉為雪白大地。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "13:40", icon: "fa-bus", title: "【能登屋接駁車】", location: "大石田車站", 
+                        content: [
+                            { text: "在大石田車站外搭乘預約好的「能登屋旅館」專屬接駁車，直達銀山溫泉街。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.notoyaryokan.com/", title: "能登屋官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "下午", icon: "fa-snowflake", title: "【大正浪漫雪中散策】", location: "銀山溫泉", 
+                        content: [
+                            { text: "抵達銀山溫泉！換上旅館準備的防寒大衣與雪靴，漫步在鋪滿白雪的溫泉街。<br/>必吃排隊美食「はいからさん通り」的炸咖哩麵包，以及百年老店「野川豆腐店」的手工現做豆腐。<br/>沿著銀山川走到盡頭，還能欣賞被白雪點綴的「白銀瀑布」。", images: ["https://images.unsplash.com/photo-1614088921867-b50a2569e5d4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "http://www.ginzanonsen.jp/", title: "銀山溫泉指南" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "住宿", icon: "fa-hotel", title: "入住百年國定文化財", location: "銀山溫泉 能登屋旅館", 
+                        content: [
+                            { text: "入住擁有百年歷史、被列為國家登錄有形文化財的「能登屋旅館」。這棟壯麗的木造多層建築，正是阿信與神隱少女的靈感聖地之一。<br/>泡個熱騰騰的溫泉，享用精緻的山形鄉土料理與尾花澤和牛晚餐。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.notoyaryokan.com/", title: "能登屋官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    }
+                ]
+            },
+            {
+                day: "Day 2",
+                date: "2027-01-14",
+                title: "雪怪之鄉・藏王溫泉",
+                summary: "離開銀山，前往山形市區採買米菓，午後登上藏王溫泉感受強酸性硫磺泉的魅力。",
+                guideNotes: `<ul>
+                    <li><strong>藏王溫泉 起源：</strong> 擁有 1900 年歷史，是山形縣內最古老的溫泉。泉質屬於強酸性硫磺泉，有著濃烈的硫磺味與獨特的乳白色，被譽為「養顏美容之湯」與「使小孩健康成長之湯」。</li>
+                    <li><strong>藏王溫泉 景點：</strong> 除了全日本面積最大的滑雪場，冬季最知名的就是搭乘纜車欣賞世界級奇觀「樹冰 (Snow Monsters)」。</li>
+                    <li><strong>推薦美食 - 藏王伊賀栗 (いがぐり)：</strong> 藏王特產甜點，外型像栗子，內餡是甜地瓜與栗子泥，非常適合配茶。</li>
+                    <li><strong>推薦美食 - 玉蒟蒻 (玉こんにゃく)：</strong> 山形縣的靈魂美食，用醬油燉煮成圓球狀的蒟蒻，串在竹籤上，塗上黃芥末吃，熱呼呼的非常暖胃。</li>
+                    <li><strong>山形車站買米菓：</strong> 山形縣盛產稻米，當地的「米菓 (煎餅/仙貝)」非常出名，推薦在車站百貨或土產店採買「酒田米菓」或「藏王煎餅」。</li>
+                </ul>`,
+                activities: [
+                    { 
+                        time: "10:00", icon: "fa-car", title: "退房與接駁", location: "銀山溫泉 能登屋旅館", 
+                        content: [
+                            { text: "享用完日式早餐後辦理退房，搭乘能登屋接駁車回到大石田車站。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "11:27-12:03", icon: "fa-train-tram", title: "【山形新幹線】前往山形", location: "山形新幹線 翼 140號 (大石田 -> 山形)", 
+                        content: [
+                            { text: "搭乘新幹線南下前往山形市區。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "12:05-13:00", icon: "fa-bag-shopping", title: "【山形車站購物時間】", location: "山形車站 S-PAL", 
+                        content: [
+                            { text: "在山形車站周邊吃午餐，並於站內的土產區（如 S-PAL 百貨）大採買山形著名的「米菓」與各類限定點心。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "13:20-13:57", icon: "fa-bus", title: "【山交巴士】前往藏王", location: "山交巴士 山形～藏王線", 
+                        content: [
+                            { text: "從山形車站轉乘山交巴士，約 40 分鐘的車程，一路爬升進入白雪覆蓋的藏王溫泉鄉。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.yamakobus.jp/", title: "山交巴士" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "下午", icon: "fa-snowman", title: "【雪國名湯散策】", location: "藏王溫泉", 
+                        content: [
+                            { text: "漫步在煙霧迷漫、充滿濃厚硫磺味的藏王溫泉街。<br/>路上有許多共同浴場與足湯，可以買串山形特產「玉蒟蒻（玉こんにゃく）」，塗上微嗆的黃芥末，在雪地中吃特別對味。", images: ["https://images.unsplash.com/photo-1549488344-c603126e7939?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "http://www.zao-spa.or.jp/", title: "藏王溫泉官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "住宿", icon: "fa-hotel", title: "入住藏王經典旅宿", location: "Hotel Lucent Takamiya", 
+                        content: [
+                            { text: "入住高見屋集團旗下的 Hotel Lucent Takamiya。距離纜車站非常近，館內擁有木造溫馨的裝潢與舒適的強酸性硫磺泉大浴場。<br/>好好享受被白雪與溫泉包圍的夜晚。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.zao-lucent.com/", title: "飯店官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    }
+                ]
+            },
+            {
+                day: "Day 3",
+                date: "2027-01-15",
+                title: "藏王樹冰・南下群馬",
+                summary: "登上纜車尋找壯麗的雪怪樹冰，午後搭乘新幹線一路南下群馬高崎，享受燒肉大餐。",
+                guideNotes: `<ul>
+                    <li><strong>藏王樹冰 (Snow Monsters)：</strong> 世界上極少數氣候條件下才能形成的自然奇觀。來自西伯利亞的冷冽季風將水滴冰凍在青森冷杉上，反覆結冰積雪，長成一尊尊巨大的「雪怪」。</li>
+                    <li><strong>藏王纜車 (Zao Ropeway)：</strong> 需搭乘兩段纜車直達山頂地藏尊。山頂氣溫極低（常在零下10度左右），風雪極強，務必做好「最高級別」的防寒、防風與頭臉部保暖。</li>
+                    <li><strong>高崎市 (Takasaki)：</strong> 群馬縣最大的交通樞紐與商業中心，著名的「達磨不倒翁 (Daruma)」的發源地。</li>
+                </ul>`,
+                activities: [
+                    { 
+                        time: "06:45", icon: "fa-utensils", title: "飯店早餐", location: "Hotel Lucent Takamiya", 
+                        content: [
+                            { text: "早起享用飯店豐盛的早餐，為極寒的山頂樹冰之旅儲備熱量與體力。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "08:00", icon: "fa-cable-car", title: "【尋找雪怪奇觀】", location: "藏王纜車山麓站、藏王樹冰", 
+                        content: [
+                            { text: "從飯店步行約 6 分鐘抵達「藏王纜車山麓站」。<br/>搭乘纜車一路升至地藏山頂站，沿途往下看是滿山遍野的「雪怪」大軍。<br/>抵達山頂後，到戶外近距離觀賞壯麗的樹冰，並敲響「開運之鐘」、參拜被雪掩埋一半的「地藏尊」。<br/>※ 山頂氣候嚴寒，請務必戴上毛帽、手套、圍巾與防風衣物。", images: ["https://images.unsplash.com/photo-1547055977-eb1140922880?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://zaoropeway.co.jp/", title: "藏王纜車官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "中午", icon: "fa-bus", title: "回程前往山形", location: "藏王溫泉巴士站", 
+                        content: [
+                            { text: "回飯店領取行李，搭乘【山交巴士 山形～藏王線】告別藏王，返回山形車站。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "12:05-15:12", icon: "fa-train-subway", title: "【新幹線大串聯】南下群馬", location: "山形 -> 大宮 -> 高崎", 
+                        content: [
+                            { text: "展開新幹線長途旅程：<br/>1. 12:05-14:23 搭乘【山形新幹線 翼 140號】從山形前往大宮（埼玉）。<br/>2. 14:49-15:12 轉乘【北陸新幹線 白鷹 567號】從大宮出發至高崎。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "下午", icon: "fa-city", title: "高崎市區購物散策", location: "高崎車站周邊", 
+                        content: [
+                            { text: "抵達群馬縣的交通樞紐高崎市。在車站周邊的百貨與藥妝店進行美妝採買行程，補充旅行物資。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "晚餐", icon: "fa-fire", title: "【大口吃燒肉】", location: "高崎市區", 
+                        content: [
+                            { text: "晚餐挑選高崎市區的日式燒肉店，大口吃肉慰勞一整天舟車勞頓與爬雪山的辛勞！", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "住宿", icon: "fa-bed", title: "入住高崎車站周邊", location: "高崎1-2-3酒店 (Hotel 1-2-3 Takasaki)", 
+                        content: [
+                            { text: "辦理入住，好好休息，準備明日前往日本三大名湯之一的草津溫泉。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.hotel123.co.jp/takasaki/", title: "飯店官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    }
+                ]
+            },
+            {
+                day: "Day 4",
+                date: "2027-01-16",
+                title: "天下名湯・草津溫泉",
+                summary: "朝聖達磨發源地，搭乘特急列車直達草津，感受日本第一溫泉湯畑的震撼與揉湯文化。",
+                guideNotes: `<ul>
+                    <li><strong>少林山 達磨寺：</strong> 這裡是日本新年祈福象徵「達磨（不倒翁）」的發祥地。寺內堆滿了信眾還願的達磨，可以在此購買各種尺寸與顏色的祈福達磨。</li>
+                    <li><strong>草津溫泉 起源：</strong> 蟬聯日本溫泉百選第一名、日本三大名湯之一。以強酸性（pH值約2.0）的殺菌力與極高的湧出量聞名。據說除了相思病之外，什麼病都能治。</li>
+                    <li><strong>草津溫泉 景點：</strong> 
+                        1. <strong>湯畑 (Yubatake)：</strong> 溫泉街中心的巨大溫泉源頭，每分鐘湧出四千公升的溫泉，木槽用來降溫並採集「湯之花」。夜間點燈極度夢幻。
+                        2. <strong>揉湯 (湯もみ)：</strong> 因為源泉溫度高達50-90度，古人發展出用長木板攪拌溫泉來降溫的傳統儀式，配合著歌謠，非常具代表性。
+                        3. <strong>西之河原公園：</strong> 到處都是湧出溫泉的河川，煙霧繚繞，最深處有巨大的露天風呂。</li>
+                    <li><strong>推薦美食與伴手禮：</strong> 必買現蒸的「草莓溫泉饅頭」與「湯畑入浴劑（湯の花）」。推薦品嚐用溫泉水煮的「溫泉蛋」與串烤。</li>
+                </ul>`,
+                activities: [
+                    { 
+                        time: "上午", icon: "fa-vihara", title: "【祈求好運的達磨故鄉】(Optional)", location: "少林山 達磨寺", 
+                        content: [
+                            { text: "若早上時間充裕，可前往高崎著名的少林山達磨寺。滿山遍野紅通通的達磨不倒翁極具視覺衝擊力，買個小達磨為新的一年祈福吧！", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.daruma.or.jp/", title: "達磨寺官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "11:19-12:18", icon: "fa-train", title: "【特急草津・四萬】前往草津口", location: "特急草津・四萬 1號 (高崎 -> 長野原草津口)", 
+                        content: [
+                            { text: "搭乘特急列車，舒適地前往距離草津溫泉最近的鐵路車站「長野原草津口」。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "12:30-12:53", icon: "fa-bus", title: "轉乘JR巴士", location: "JR巴士 (長野原草津口 -> 草津溫泉)", 
+                        content: [
+                            { text: "抵達車站後，無縫接軌轉乘 JR 巴士，約 25 分鐘即可抵達草津溫泉巴士總站。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "下午", icon: "fa-hot-tub-person", title: "【日本第一名湯散策】", location: "草津溫泉 湯畑與西之河原", 
+                        content: [
+                            { text: "抵達草津溫泉！首先映入眼簾的絕對是震撼的「湯畑」，巨大的木槽與白煙繚繞，硫磺味撲鼻而來。<br/>沿著商店街漫步，品嚐現蒸的溫泉饅頭與溫泉蛋，一路走到「西之河原公園」，感受溫泉川在雪地中流淌的奇景。<br/>晚上別忘了回來欣賞湯畑浪漫的點燈夜景。", images: ["https://images.unsplash.com/photo-1601042879364-f3947d3f9c16?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.kusatsu-onsen.ne.jp/", title: "草津觀光協會" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "住宿", icon: "fa-hotel", title: "入住湯畑旁的頂級老字號", location: "草津溫泉 ホテル一井 (Hotel Ichii)", 
+                        content: [
+                            { text: "入住擁有三百多年歷史、正對著湯畑的絕佳位置「飯店一井」。<br/>飯店內擁有兩種不同源泉（湯畑前白旗源泉、萬代鑛源泉）的溫泉浴場，讓您一次享受草津名湯的頂級洗禮。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.hotel-ichii.co.jp/", title: "飯店一井官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    }
+                ]
+            },
+            {
+                day: "Day 5",
+                date: "2027-01-17",
+                title: "告別雪國・滿載賦歸",
+                summary: "依依不捨離開草津，搭車返回東京品嚐拉麵，直奔機場準備回台。",
+                guideNotes: `<ul>
+                    <li><strong>東京車站拉麵推薦：</strong> 東京車站內的「東京拉麵街 (東京ラーメンストリート)」匯集了日本最頂級的八家拉麵名店。推薦沾麵名店「六厘舍」或濃厚味噌拉麵。</li>
+                    <li><strong>最後採買：</strong> 把握在東京車站的轉車時間，採買東京香蕉蛋糕 (Tokyo Banana)、NY起司奶油脆餅等知名伴手禮。</li>
+                </ul>`,
+                activities: [
+                    { 
+                        time: "12:00-12:22", icon: "fa-bus", title: "告別草津", location: "JR巴士 (草津溫泉 -> 長野原草津口)", 
+                        content: [
+                            { text: "上午把握最後時間泡個晨湯、買齊溫泉伴手禮後，搭乘巴士下山返回長野原草津口車站。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "13:07-15:26", icon: "fa-train", title: "【特急草津・四萬】返回東京", location: "特急草津・四萬 2號 (長野原草津口 -> 上野)", 
+                        content: [
+                            { text: "搭乘特急列車直達上野，並轉乘在來線抵達東京車站。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "下午", icon: "fa-bowl-food", title: "東京車站美食與採買", location: "東京車站", 
+                        content: [
+                            { text: "在東京車站稍作停留，前往「東京拉麵街」吃碗熱騰騰的拉麵當作遲來的午餐。<br/>順便在車站內的土產街大採買東京人氣伴手禮。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.tokyoeki-1bangai.co.jp/street/ramen/", title: "東京拉麵街" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "17:03-17:57", icon: "fa-train-subway", title: "【成田快線 NEX】前往機場", location: "成田快線 43號 (東京 -> 成田機場)", 
+                        content: [
+                            { text: "搭乘舒適的成田特快 (Narita Express) 前往機場。<br/><span style='color:#e11d48; font-weight:bold;'><i class='fa-solid fa-triangle-exclamation'></i> 行程備註：</span>您的交通紀錄標示搭乘成田快線至「成田機場第二航廈」，但起飛航班標示為「羽田機場第三航廈」，請務必在出發前確認您最終的起飛機場，以免搭錯路線！", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "20:25", icon: "fa-plane-departure", title: "飛往台灣", location: "東京國際機場", 
+                        content: [
+                            { text: "結束美好的銀山藏王草津五日雪國名湯之旅，搭機平安返回台灣。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "", title: "" }, { url: "", title: "" }, { url: "", title: "" }]
+                    }
+                ]
+            },
+            {
+                day: "Info",
+                date: "重要資訊",
+                title: "行前準備 & 天氣概況",
+                summary: "日本東北與群馬山區的嚴冬天氣指南。",
+                guideNotes: `<ul>
+                    <li><strong>氣溫：</strong> 1月中旬是日本一年中最冷的時期。銀山與藏王溫泉位於東北雪區，氣溫長期在 0 度至零下 10 度之間；草津溫泉位於高海拔山區，夜晚也可能降至零下。</li>
+                    <li><strong>穿著（洋蔥式穿法）：</strong> 室內暖氣極強，建議內穿發熱衣與一般毛衣，最外層務必穿著「防風、防水、保暖」的厚羽絨外套或雪衣。</li>
+                    <li><strong>配件：</strong> 藏王山頂風雪極強，必須準備「毛帽（蓋住耳朵）」、「防風手套」、「厚圍巾」與「太陽眼鏡/護目鏡」。</li>
+                    <li><strong>鞋子：</strong> 雪地行走極易滑倒，強烈建議穿著「防水防滑的雪靴」，或在當地便利商店購買「雪地防滑鞋套（冰爪）」。避免穿一般平底鞋或帆布鞋。</li>
+                </ul>`,
+                activities: [
+                    { 
+                        time: "票券", icon: "fa-ticket", title: "JR PASS 東日本鐵路周遊券", location: "羽田機場兌換", 
+                        content: [
+                            { text: "此次行程大量依賴新幹線（山形新幹線、北陸新幹線）與特急列車，請確認已購買適用的 JR PASS（如：JR東日本鐵路周遊券 東北地區），並事先於官網預約劃位新幹線指定席。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [{ url: "https://www.jreast.co.jp/multi/zh-CHT/pass/", title: "JR PASS 官網" }, { url: "", title: "" }, { url: "", title: "" }]
+                    },
+                    { 
+                        time: "天氣預報", icon: "fa-snowflake", title: "【嚴防暴雪與交通停駛】", location: "山形 / 群馬", 
+                        content: [
+                            { text:"出發前與行程中，請密切關注 JR 東日本的列車運行情報。<br/>若遇到強烈暴雪，新幹線或山形交通巴士、藏王纜車隨時有停駛或延遲的可能，請隨時保留備案與緩衝時間。", images: [] },
+                            { text: "", images: [] }
+                        ],
+                        links: [
+                            { url: "https://tenki.jp/forecast/2/10/3110/6201/", title: "山形天氣" },
+                            { url: "https://tenki.jp/forecast/3/13/4220/10426/", title: "草津天氣" },
+                            { url: "https://traininfo.jreast.co.jp/train_info/tc/shinkansen.aspx", title: "JR運行情報" }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        const locationCoords = {
+            "default": { lat: 38.2404, lon: 140.3633 }, // 預設山形
+            "羽田": { lat: 35.5494, lon: 139.7798 },
+            "上野": { lat: 35.7138, lon: 139.7772 },
+            "淺草": { lat: 35.7148, lon: 139.7967 },
+            "銀山": { lat: 38.5714, lon: 140.5317 },
+            "大石田": { lat: 38.5991, lon: 140.3951 },
+            "能登屋": { lat: 38.5714, lon: 140.5317 },
+            "山形": { lat: 38.2404, lon: 140.3633 },
+            "藏王": { lat: 38.1654, lon: 140.3958 },
+            "大宮": { lat: 35.9063, lon: 139.6238 },
+            "高崎": { lat: 36.3223, lon: 139.0131 },
+            "長野原": { lat: 36.5458, lon: 138.6473 },
+            "草津": { lat: 36.6212, lon: 138.5960 },
+            "東京": { lat: 35.6812, lon: 139.7671 },
+            "成田": { lat: 35.7641, lon: 140.3861 },
+            "桃園": { lat: 25.0797, lon: 121.2342 }
+        };
+
+        const tabContainer = document.getElementById('tab-container');
+        const itineraryContainer = document.getElementById('itinerary-container');
+        const heroTitle = document.getElementById('hero-title');
+        const heroDesc = document.getElementById('hero-desc');
+        const guideNotes = document.getElementById('guide-notes');
+        const headerDate = document.getElementById('header-date');
+
+        async function fetchRealWeather(locationName, elementId) {
+            let coords = locationCoords["default"];
+            for (const key in locationCoords) {
+                if (locationName.includes(key)) { coords = locationCoords[key]; break; }
+            }
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,weather_code,is_day&timezone=Asia%2FTokyo`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.current) {
+                    const info = getWeatherIcon(data.current.weather_code, data.current.is_day);
+                    const el = document.getElementById(elementId);
+                    if (el) el.innerHTML = `<i class="fa-solid ${info.icon} ${info.color}"></i> ${Math.round(data.current.temperature_2m)}°C`;
+                }
+            } catch (error) { console.error("Weather error", error); }
+        }
+
+        function getWeatherIcon(code, isDay) {
+            if (code === 0) return { icon: isDay ? "fa-sun" : "fa-moon", color: "text-blue-400" };
+            if (code <= 3) return { icon: "fa-cloud-sun", color: "text-gray-400" };
+            if (code >= 51 && code <= 67) return { icon: "fa-umbrella", color: "text-blue-500" };
+            if (code >= 71 && code <= 86) return { icon: "fa-snowflake", color: "text-blue-300" }; // 加入下雪圖示
+            return { icon: "fa-cloud", color: "text-gray-400" };
+        }
+
+        function renderTabs() {
+            tabContainer.innerHTML = '';
+            itineraryData.forEach((item, index) => {
+                const btn = document.createElement('button');
+                btn.className = `px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${index === 0 ? 'tab-active' : 'tab-inactive'}`;
+                btn.innerText = item.day;
+                btn.onclick = () => switchTab(index);
+                tabContainer.appendChild(btn);
+            });
+        }
+
+        function switchTab(index) {
+            const tabs = tabContainer.children;
+            for (let i = 0; i < tabs.length; i++) {
+                if (i === index) { tabs[i].classList.add('tab-active'); tabs[i].classList.remove('tab-inactive'); }
+                else { tabs[i].classList.add('tab-inactive'); tabs[i].classList.remove('tab-active'); }
+            }
+            renderItinerary(index);
+            updateHero(index);
+            itineraryContainer.scrollTop = 0;
+        }
+
+        function renderItinerary(index) {
+            const dayData = itineraryData[index];
+            headerDate.innerText = dayData.date === "重要資訊" ? "INFO" : dayData.date;
+            
+            let html = `
+                <div class="mb-6 fade-in">
+                    <h2 class="text-2xl font-bold font-sans" style="color: var(--text-main);">${dayData.title}</h2>
+                    <p class="text-sm mt-1" style="color: var(--text-sub);">${dayData.summary}</p>
+                    <div class="md:hidden mt-4 p-4 rounded-xl text-sm border border-[var(--primary-color)] shadow-sm" style="background-color: var(--accent-color); color: var(--text-main);">
+                        <p class="font-bold mb-1" style="color: var(--primary-color);"><i class="fa-solid fa-star mr-1"></i> 導遊筆記 & 伴手禮</p>
+                        ${dayData.guideNotes}
+                    </div>
+                </div>
+            `;
+
+            if (dayData.activities) {
+                html += '<div class="relative space-y-6 pl-2">';
+                dayData.activities.forEach((activity, idx) => {
+                    const isLast = idx === dayData.activities.length - 1;
+                    const weatherId = `weather-${index}-${idx}`;
+                    let mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.location)}`;
+                    
+                    let activityContentHtml = '';
+                    if (activity.content && Array.isArray(activity.content)) {
+                        activity.content.forEach(segment => {
+                            if (!segment.text && (!segment.images || segment.images.length === 0)) return;
+
+                            activityContentHtml += `<div class="mb-4 last:mb-0">`;
+                            
+                            if (segment.text) {
+                                activityContentHtml += `
+                                    <div class="mb-3 leading-relaxed p-3 border-l-2 rounded-r-lg" style="font-size: var(--note-font-size); line-height: 1.6; border-color: var(--primary-color); background-color: rgba(30, 58, 138, 0.05); color: var(--text-sub);">
+                                        ${segment.text}
+                                    </div>
+                                `;
+                            }
+
+                            if (segment.images && segment.images.length > 0) {
+                                const gridClass = segment.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2 gap-2';
+                                activityContentHtml += `<div class="mb-3 grid ${gridClass}">`;
+                                
+                                segment.images.forEach(imgUrl => {
+                                    if (imgUrl) {
+                                        activityContentHtml += `
+                                            <div class="overflow-hidden rounded-lg shadow-sm border border-gray-100 h-full">
+                                                <img src="${imgUrl}" class="w-full h-full object-cover max-h-64" alt="行程圖片" onerror="this.style.display='none'">
+                                            </div>
+                                        `;
+                                    }
+                                });
+                                activityContentHtml += `</div>`;
+                            }
+
+                            activityContentHtml += `</div>`;
+                        });
+                    }
+
+                    html += `
+                        <div class="relative flex gap-4 fade-in ${isLast ? 'last-item' : ''}" style="animation-delay: ${idx * 0.1}s">
+                            <div class="flex flex-col items-center">
+                                <div class="rounded-full border-2 border-white flex items-center justify-center shadow-sm z-10 shrink-0"
+                                     style="width: var(--timeline-icon-size); height: var(--timeline-icon-size); font-size: var(--timeline-icon-font-size); background-color: var(--light-blue); color: white;">
+                                    <i class="fa-solid ${activity.icon}"></i>
+                                </div>
+                                <div class="timeline-line"></div>
+                            </div>
+
+                            <div class="flex-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+                                <div id="${weatherId}" class="absolute top-4 right-4 text-xs font-medium flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md text-gray-400">
+                                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                </div>
+
+                                <div class="font-bold mb-1 uppercase" style="font-size: var(--meta-font-size); color: var(--primary-color); opacity: 0.9;">${activity.time}</div>
+                                <h3 class="font-bold mb-1 font-sans" style="font-size: var(--title-font-size); color: var(--text-main);">${activity.title}</h3>
+                                <p class="flex items-center gap-1 mb-3" style="font-size: var(--meta-font-size); color: var(--text-sub);">
+                                    <i class="fa-solid fa-location-dot opacity-50 text-xs"></i> ${activity.location}
+                                </p>
+                                
+                                ${activityContentHtml}
+
+                                <div class="flex flex-wrap gap-2 mt-auto">
+                                    <a href="${mapUrl}" target="_blank" class="nav-btn px-4 py-2 rounded-lg text-center font-bold flex items-center justify-center gap-2 hover:bg-gray-50 flex-grow" style="font-size: var(--meta-font-size);">
+                                        <i class="fa-solid fa-location-arrow" style="color: var(--primary-color);"></i> 導航
+                                    </a>
+                                    
+                                    ${activity.links ? activity.links.map(link => `
+                                        ${(link.url && link.url !== '#') ? `
+                                        <a href="${link.url}" target="_blank" class="nav-btn px-3 py-2 rounded-lg text-center flex items-center justify-center gap-1 hover:bg-gray-50" title="${link.title}">
+                                            <i class="fa-solid fa-link" style="color: var(--primary-color);"></i>
+                                            <span class="text-xs font-medium">${link.title}</span>
+                                        </a>` : ''}
+                                    `).join('') : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    setTimeout(() => fetchRealWeather(activity.location, weatherId), idx * 150);
+                });
+                html += '</div>';
+            }
+            itineraryContainer.innerHTML = html;
+        }
+
+        function updateHero(index) {
+            const data = itineraryData[index];
+            heroTitle.innerText = data.title;
+            heroDesc.innerText = data.summary;
+            guideNotes.innerHTML = data.guideNotes;
+        }
+
+        // 頁面載入完成後初始化
+        window.onload = () => { renderTabs(); switchTab(0); };
+    </script>
+</body>
+</html>
